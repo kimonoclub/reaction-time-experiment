@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>心理学実験：視覚・聴覚反応時間測定</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Sans", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+      background-color: #f8f9fa;
+      color: #333;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      user-select: none;
+    }
+    .container {
+      background: #fff;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+      width: 90%;
+      max-width: 650px;
+      text-align: center;
+    }
+    h1 {
+      font-size: 1.5rem;
+      margin-bottom: 20px;
+      color: #2c3e50;
+    }
+    p {
+      line-height: 1.7;
+      margin-bottom: 16px;
+      text-align: left;
+    }
+    .input-group {
+      margin: 20px 0;
+      text-align: left;
+    }
+    label {
+      display: block;
+      font-weight: bold;
+      margin-bottom: 6px;
+    }
+    input[type="text"] {
+      width: 100%;
+      padding: 10px 14px;
+      font-size: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+    button {
+      background-color: #3498db;
+      color: white;
+      border: none;
+      padding: 12px 28px;
+      font-size: 1.1rem;
+      font-weight: bold;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+      margin-top: 10px;
+    }
+    button:hover {
+      background-color: #2980b9;
+    }
+    /* 実験エリア */
+    #experiment-area {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background-color: #222;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      cursor: pointer;
+    }
+    #fixation {
+      font-size: 4rem;
+      color: #fff;
+      font-weight: 300;
+    }
+    #visual-target {
+      width: 140px;
+      height: 140px;
+      background-color: #e74c3c;
+      border-radius: 50%;
+      display: none;
+      box-shadow: 0 0 20px rgba(231, 76, 60, 0.6);
+    }
+    #exp-status {
+      position: absolute;
+      top: 20px;
+      color: #888;
+      font-size: 1rem;
+    }
+    #warning-msg {
+      position: absolute;
+      bottom: 40px;
+      color: #ff7675;
+      font-size: 1.2rem;
+      font-weight: bold;
+      display: none;
+    }
+    /* 送信画面 */
+    textarea {
+      width: 100%;
+      height: 200px;
+      font-family: monospace;
+      padding: 10px;
+      font-size: 0.85rem;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      margin-top: 10px;
+      white-space: pre;
+    }
+    .badge {
+      display: inline-block;
+      padding: 4px 8px;
+      background: #eef2f7;
+      border-radius: 4px;
+      font-size: 0.9rem;
+      color: #4a69bd;
+      font-weight: bold;
+      margin-bottom: 12px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 1. 初期設定画面 -->
+  <div class="container" id="screen-setup">
+    <div class="badge">心理学実験演習</div>
+    <h1>反応時間測定 Web実験</h1>
+    <p>
+      この実験では、<strong>「目（赤い丸）」</strong>または<strong>「耳（ピピッという音）」</strong>の刺激を感じた瞬間に、できるだけ速く反応する時間を測定します。
+    </p>
+    <p>
+      <strong>【操作方法】</strong><br>
+      刺激（赤丸または音）に気づいた瞬間に、<strong>「スペースキー（または画面タップ/クリック）」</strong>をすばやく1回だけ押してください。
+    </p>
+    <p>
+      <strong>【構成】</strong><br>
+      ・練習セッション：6試行（視覚3回、聴覚3回）<br>
+      ・本番セッション：24試行（視覚12回、聴覚12回・ランダム順）
+    </p>
+
+    <div class="input-group">
+      <label for="student-id">学籍番号</label>
+      <input type="text" id="student-id" placeholder="例: 202526001" required>
+    </div>
+    <div class="input-group">
+      <label for="student-name">氏名</label>
+      <input type="text" id="student-name" placeholder="例: 四国 太郎" required>
+    </div>
+
+    <button id="btn-start-practice">練習を始める</button>
+  </div>
+
+  <!-- 2. 実験フルスクリーン領域 -->
+  <div id="experiment-area">
+    <div id="exp-status">準備中...</div>
+    <div id="fixation">+</div>
+    <div id="visual-target"></div>
+    <div id="warning-msg">早すぎます！刺激が出てから押してください</div>
+  </div>
+
+  <!-- 3. 結果表示・メール送信画面 -->
+  <div class="container" id="screen-result" style="display: none;">
+    <h1>実験終了</h1>
+    <p>全試行が完了しました。以下のボタンを押して担当教員へ測定データをメール送信してください。</p>
+    
+    <button id="btn-send-mail" style="background-color: #27ae60; font-size: 1.2rem; margin-bottom: 15px;">
+      メールアプリを起動して送信
+    </button>
+    <br>
+    <button id="btn-copy-clipboard" style="background-color: #7f8c8d; font-size: 0.9rem;">
+      データをクリップボードにコピー
+    </button>
+
+    <p style="margin-top: 20px; font-size: 0.85rem; color: #666;">
+      ※メールが自動起動しない場合は、上の「データをコピー」を押し、メールの本文に貼り付けて <strong>yshiba1022@gmail.com</strong> 宛てに送信してください。
+    </p>
+
+    <textarea id="result-csv" readonly></textarea>
+  </div>
+
+  <script>
+    // --- 音声コンテキストの初期化 (Web Audio API) ---
+    let audioCtx = null;
+    function playBeep() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(1000, audioCtx.currentTime); // 1000Hz純音
+      gain.gain.setValueAtTime(0.5, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15); // 150ms
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.15);
+    }
+
+    // --- 実験パラメータ ---
+    const PRACTICE_TRIALS = [
+      ...Array(3).fill('Visual'),
+      ...Array(3).fill('Auditory')
+    ];
+    const MAIN_TRIALS = [
+      ...Array(12).fill('Visual'),
+      ...Array(12).fill('Auditory')
+    ];
+
+    // 配列のシャッフル関数（Fisher-Yates）
+    function shuffle(arr) {
+      const a = [...arr];
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+    // 状態管理
+    let studentId = "";
+    let studentName = "";
+    let isPractice = true;
+    let trialQueue = [];
+    let currentTrialIndex = 0;
+    let currentCondition = "";
+    let stimulusPresented = false;
+    let stimulusTime = 0;
+    let waitTimer = null;
+    let acceptingResponse = false;
+    let results = []; // 保存用
+
+    // DOM要素
+    const screenSetup = document.getElementById('screen-setup');
+    const screenExp = document.getElementById('experiment-area');
+    const screenResult = document.getElementById('screen-result');
+    const fixation = document.getElementById('fixation');
+    const visualTarget = document.getElementById('visual-target');
+    const expStatus = document.getElementById('exp-status');
+    const warningMsg = document.getElementById('warning-msg');
+    const resultCsv = document.getElementById('result-csv');
+
+    // 初期化と開始
+    document.getElementById('btn-start-practice').addEventListener('click', () => {
+      studentId = document.getElementById('student-id').value.trim();
+      studentName = document.getElementById('student-name').value.trim();
+      if (!studentId || !studentName) {
+        alert("学籍番号と氏名を入力してください。");
+        return;
+      }
+      // AudioContextのアンロック（ユーザー操作による）
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      
+      startPhase(true);
+    });
+
+    function startPhase(practice) {
+      isPractice = practice;
+      currentTrialIndex = 0;
+      trialQueue = shuffle(practice ? PRACTICE_TRIALS : MAIN_TRIALS);
+
+      screenSetup.style.display = 'none';
+      screenExp.style.display = 'flex';
+      
+      nextTrial();
+    }
+
+    function nextTrial() {
+      if (currentTrialIndex >= trialQueue.length) {
+        if (isPractice) {
+          alert("練習試行が終了しました。\n次に本番試行（全24回）を開始します。準備ができたらOKを押してください。");
+          startPhase(false);
+        } else {
+          endExperiment();
+        }
+        return;
+      }
+
+      currentCondition = trialQueue[currentTrialIndex];
+      stimulusPresented = false;
+      acceptingResponse = true; // 早期押しの検知用
+      warningMsg.style.display = 'none';
+      visualTarget.style.display = 'none';
+      fixation.style.display = 'block';
+
+      expStatus.textContent = isPractice 
+        ? `練習セッション: ${currentTrialIndex + 1} / ${trialQueue.length}`
+        : `本番セッション: ${currentTrialIndex + 1} / ${trialQueue.length}`;
+
+      // ランダム遅延（2000ms〜4500ms）
+      const delay = Math.floor(Math.random() * 2500) + 2000;
+      
+      waitTimer = setTimeout(() => {
+        presentStimulus();
+      }, delay);
+    }
+
+    function presentStimulus() {
+      stimulusPresented = true;
+      stimulusTime = performance.now();
+
+      if (currentCondition === 'Visual') {
+        fixation.style.display = 'none';
+        visualTarget.style.display = 'block';
+      } else {
+        playBeep();
+      }
+    }
+
+    // 応答ハンドラ
+    function handleResponse() {
+      if (!acceptingResponse) return;
+
+      if (!stimulusPresented) {
+        // 早すぎた場合（フライング）
+        clearTimeout(waitTimer);
+        acceptingResponse = false;
+        warningMsg.style.display = 'block';
+        setTimeout(() => {
+          nextTrial(); // 同じ試行（または次の試行）へ復帰
+        }, 1500);
+        return;
+      }
+
+      const rt = performance.now() - stimulusTime;
+      acceptingResponse = false;
+
+      // 記録（本番のみ保存）
+      if (!isPractice) {
+        results.push({
+          trial: currentTrialIndex + 1,
+          condition: currentCondition,
+          rt: Math.round(rt * 10) / 10 // 小数点第1位
+        });
+      }
+
+      // 刺激の消去
+      visualTarget.style.display = 'none';
+      fixation.style.display = 'block';
+
+      currentTrialIndex++;
+      setTimeout(nextTrial, 800); // 試行間のインターバル
+    }
+
+    // キーボードまたはタップ
+    window.addEventListener('keydown', (e) => {
+      if (screenExp.style.display === 'flex' && e.code === 'Space') {
+        e.preventDefault();
+        handleResponse();
+      }
+    });
+    screenExp.addEventListener('mousedown', (e) => {
+      if (e.target !== warningMsg) {
+        handleResponse();
+      }
+    });
+
+    // 終了処理とデータ生成
+    function endExperiment() {
+      screenExp.style.display = 'none';
+      screenResult.style.display = 'block';
+
+      // CSVデータ文字列の生成
+      let csv = "ID,Name,Trial,Condition,ReactionTime_ms\n";
+      results.forEach(r => {
+        csv += `${studentId},${studentName},${r.trial},${r.condition},${r.rt}\n`;
+      });
+
+      resultCsv.value = csv;
+
+      // メール送信リンクの作成
+      const targetEmail = "yshiba1022@gmail.com";
+      const subject = encodeURIComponent(`【反応時間実験データ】${studentId}_${studentName}`);
+      const body = encodeURIComponent(
+`学籍番号: ${studentId}
+氏名: ${studentName}
+
+--- 実験データ (CSV形式) ---
+${csv}`
+      );
+      const mailtoUrl = `mailto:${targetEmail}?subject=${subject}&body=${body}`;
+
+      document.getElementById('btn-send-mail').onclick = () => {
+        window.location.href = mailtoUrl;
+      };
+
+      document.getElementById('btn-copy-clipboard').onclick = () => {
+        navigator.clipboard.writeText(resultCsv.value).then(() => {
+          alert("データをクリップボードにコピーしました！");
+        });
+      };
+    }
+  </script>
+</body>
+</html>
